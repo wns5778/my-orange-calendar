@@ -3,6 +3,7 @@ import { signOut } from 'firebase/auth'
 import { auth, firebaseConfigured } from './firebase'
 import { useAuth } from './hooks/useAuth'
 import { useCollection } from './hooks/useCollection'
+import { describeFirestoreError } from './utils/firebaseError'
 import AuthScreen from './components/AuthScreen'
 import BottomNav from './components/BottomNav'
 import CalendarView from './components/CalendarView'
@@ -12,10 +13,22 @@ import NotesView from './components/NotesView'
 export default function App() {
   const user = useAuth()
   const [tab, setTab] = useState('calendar')
+  const [errorMsg, setErrorMsg] = useState('')
 
   const events = useCollection(user?.uid, 'events', 'date')
   const todos = useCollection(user?.uid, 'todos', null)
   const notes = useCollection(user?.uid, 'notes', null)
+
+  // Firestore 쓰기가 실패해도(권한/네트워크 오류 등) 조용히 무시되지 않도록 감싸서 화면에 표시한다.
+  function guarded(action) {
+    return async (...args) => {
+      try {
+        await action(...args)
+      } catch (err) {
+        setErrorMsg(describeFirestoreError(err))
+      }
+    }
+  }
 
   if (user === undefined) {
     return (
@@ -44,29 +57,36 @@ export default function App() {
         )}
       </div>
 
+      {errorMsg && (
+        <div className="error-banner">
+          <span>{errorMsg}</span>
+          <button onClick={() => setErrorMsg('')}>✕</button>
+        </div>
+      )}
+
       <div className="content">
         {tab === 'calendar' && (
           <CalendarView
             events={events.items}
             todos={todos.items}
-            onAddEvent={events.add}
-            onDeleteEvent={events.remove}
+            onAddEvent={guarded(events.add)}
+            onDeleteEvent={guarded(events.remove)}
           />
         )}
         {tab === 'todo' && (
           <TodoView
             todos={todos.items}
-            onAdd={todos.add}
-            onToggle={(id, done) => todos.update(id, { done })}
-            onDelete={todos.remove}
+            onAdd={guarded(todos.add)}
+            onToggle={guarded((id, done) => todos.update(id, { done }))}
+            onDelete={guarded(todos.remove)}
           />
         )}
         {tab === 'notes' && (
           <NotesView
             notes={notes.items}
-            onAdd={notes.add}
-            onUpdate={notes.update}
-            onDelete={notes.remove}
+            onAdd={guarded(notes.add)}
+            onUpdate={guarded(notes.update)}
+            onDelete={guarded(notes.remove)}
           />
         )}
       </div>

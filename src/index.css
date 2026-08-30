@@ -642,6 +642,33 @@ input:focus, textarea:focus {
   color: var(--ink);
 }
 
+.error-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: #fdece6;
+  color: var(--danger);
+  font-size: 12.5px;
+  padding: 10px 14px;
+  margin: 12px 18px 0;
+  border-radius: var(--radius-sm);
+  border: 1px solid #f3c8ba;
+}
+
+.error-banner span {
+  flex: 1;
+  line-height: 1.5;
+}
+
+.error-banner button {
+  background: none;
+  border: none;
+  color: var(--danger);
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+}
+
 .loading-screen {
   flex: 1;
   display: flex;
