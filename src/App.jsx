@@ -4,6 +4,7 @@ import { auth, firebaseConfigured } from './firebase'
 import { useAuth } from './hooks/useAuth'
 import { useCollection } from './hooks/useCollection'
 import { describeFirestoreError } from './utils/firebaseError'
+import { toggledTodoUpdate } from './utils/recurrence'
 import AuthScreen from './components/AuthScreen'
 import BottomNav from './components/BottomNav'
 import CalendarView from './components/CalendarView'
@@ -28,6 +29,11 @@ export default function App() {
         setErrorMsg(describeFirestoreError(err))
       }
     }
+  }
+
+  // 반복 할 일은 특정 날짜(dateKey)의 완료 여부만 토글하고, 일반 할 일은 done을 그대로 반전시킨다.
+  function toggleTodoDate(todo, dateKey) {
+    return todos.update(todo.id, toggledTodoUpdate(todo, dateKey))
   }
 
   if (user === undefined) {
@@ -71,13 +77,14 @@ export default function App() {
             todos={todos.items}
             onAddEvent={guarded(events.add)}
             onDeleteEvent={guarded(events.remove)}
+            onToggleTodo={guarded(toggleTodoDate)}
           />
         )}
         {tab === 'todo' && (
           <TodoView
             todos={todos.items}
             onAdd={guarded(todos.add)}
-            onToggle={guarded((id, done) => todos.update(id, { done }))}
+            onToggle={guarded(toggleTodoDate)}
             onDelete={guarded(todos.remove)}
           />
         )}

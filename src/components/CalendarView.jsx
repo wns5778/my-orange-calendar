@@ -8,38 +8,44 @@ import {
   toDateKey,
   todayKey
 } from '../utils/date'
+import { isTodoDoneOn, occursOn, repeatLabel } from '../utils/recurrence'
 import EventModal from './EventModal'
 
-export default function CalendarView({ events, todos, onAddEvent, onDeleteEvent }) {
+export default function CalendarView({ events, todos, onAddEvent, onDeleteEvent, onToggleTodo }) {
   const now = new Date()
   const [cursor, setCursor] = useState({ year: now.getFullYear(), month: now.getMonth() })
   const [selectedKey, setSelectedKey] = useState(todayKey())
   const [showModal, setShowModal] = useState(false)
 
   const grid = useMemo(() => buildMonthGrid(cursor.year, cursor.month), [cursor])
+  const gridKeys = useMemo(() => grid.map(toDateKey), [grid])
 
   const eventsByDate = useMemo(() => {
     const map = {}
-    for (const ev of events) {
-      if (!map[ev.date]) map[ev.date] = []
-      map[ev.date].push(ev)
+    for (const key of gridKeys) {
+      const matches = events.filter((ev) => occursOn(ev, key))
+      if (matches.length) map[key] = matches
     }
     return map
-  }, [events])
+  }, [events, gridKeys])
 
   const todosByDate = useMemo(() => {
     const map = {}
-    for (const t of todos) {
-      if (!t.date) continue
-      if (!map[t.date]) map[t.date] = []
-      map[t.date].push(t)
+    for (const key of gridKeys) {
+      const matches = todos.filter((t) => t.date && occursOn(t, key))
+      if (matches.length) map[key] = matches
     }
     return map
-  }, [todos])
+  }, [todos, gridKeys])
 
   function changeMonth(delta) {
     const d = new Date(cursor.year, cursor.month + delta, 1)
     setCursor({ year: d.getFullYear(), month: d.getMonth() })
+  }
+
+  function handleDeleteEvent(ev) {
+    if (ev.repeat && !window.confirm('반복 일정이에요. 전체 반복 일정을 삭제할까요?')) return
+    onDeleteEvent(ev.id)
   }
 
   const selectedDate = new Date(selectedKey + 'T00:00:00')
@@ -110,23 +116,32 @@ export default function CalendarView({ events, todos, onAddEvent, onDeleteEvent 
               <div className="body">
                 <div className="title">{ev.title}</div>
                 {ev.time && <div className="meta">🕒 {ev.time}</div>}
+                {ev.repeat && <div className="meta">{repeatLabel(ev.repeat)}</div>}
                 {ev.memo && <div className="memo">{ev.memo}</div>}
               </div>
-              <button className="delete-btn" onClick={() => onDeleteEvent(ev.id)}>
+              <button className="delete-btn" onClick={() => handleDeleteEvent(ev)}>
                 ✕
               </button>
             </div>
           ))}
 
-          {dayTodos.map((t) => (
-            <div className="item-card" key={t.id}>
-              <div className="color-bar" style={{ background: '#D9A441' }} />
-              <div className="body">
-                <div className="title">✅ {t.text}</div>
-                <div className="meta">할 일 · {t.done ? '완료' : '진행 중'}</div>
+          {dayTodos.map((t) => {
+            const done = isTodoDoneOn(t, selectedKey)
+            return (
+              <div className="item-card" key={t.id}>
+                <button
+                  className={`check${done ? ' done' : ''}`}
+                  onClick={() => onToggleTodo(t, selectedKey)}
+                >
+                  {done ? '✓' : ''}
+                </button>
+                <div className="body">
+                  <div className={`title${done ? ' done-text' : ''}`}>{t.text}</div>
+                  <div className="meta">{t.repeat ? repeatLabel(t.repeat) : '할 일'}</div>
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          })}
         </div>
       </div>
 

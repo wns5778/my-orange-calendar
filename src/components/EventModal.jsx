@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import RepeatFields from './RepeatFields'
 
 const SWATCHES = ['#E07A3F', '#C1602A', '#D9A441', '#B85C6B', '#7A5C46']
 
@@ -7,10 +8,23 @@ export default function EventModal({ dateKey, onClose, onSave }) {
   const [time, setTime] = useState('')
   const [memo, setMemo] = useState('')
   const [color, setColor] = useState(SWATCHES[0])
+  const [repeatEnabled, setRepeatEnabled] = useState(false)
+  const [repeatWeekdays, setRepeatWeekdays] = useState([])
+  const [repeatUntil, setRepeatUntil] = useState('')
+
+  const repeatValid = !repeatEnabled || (repeatWeekdays.length > 0 && repeatUntil && repeatUntil >= dateKey)
+
+  function toggleWeekday(idx) {
+    setRepeatWeekdays((prev) => (prev.includes(idx) ? prev.filter((d) => d !== idx) : [...prev, idx]))
+  }
 
   function handleSave() {
-    if (!title.trim()) return
-    onSave({ title: title.trim(), time, memo: memo.trim(), color, date: dateKey })
+    if (!title.trim() || !repeatValid) return
+    const data = { title: title.trim(), time, memo: memo.trim(), color, date: dateKey }
+    if (repeatEnabled) {
+      data.repeat = { weekdays: repeatWeekdays, until: repeatUntil }
+    }
+    onSave(data)
     onClose()
   }
 
@@ -60,11 +74,21 @@ export default function EventModal({ dateKey, onClose, onSave }) {
           </div>
         </div>
 
+        <RepeatFields
+          enabled={repeatEnabled}
+          onToggleEnabled={setRepeatEnabled}
+          weekdays={repeatWeekdays}
+          onToggleWeekday={toggleWeekday}
+          until={repeatUntil}
+          onChangeUntil={setRepeatUntil}
+          minDate={dateKey}
+        />
+
         <div className="modal-actions">
           <button className="btn-secondary" onClick={onClose}>
             취소
           </button>
-          <button className="btn-primary" onClick={handleSave} disabled={!title.trim()}>
+          <button className="btn-primary" onClick={handleSave} disabled={!title.trim() || !repeatValid}>
             저장
           </button>
         </div>
